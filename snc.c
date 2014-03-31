@@ -75,19 +75,21 @@ int main(int argc, char *argv[]){
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
+  int socket_fd;
+  struct sockaddr_in address_iface;
+  if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+      fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
+      return -1;
+  }
 
   if(lflag){
-     int socket_fd, connfd;
-     struct sockaddr_in address;
-     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-         fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
-         return -1;
-     }
-     address.sin_family = AF_INET;
+     int connfd;
+     address_iface.sin_family = AF_INET;
      //i think we need to replace this with source_addr if its specified
-     address.sin_addr.s_addr = INADDR_ANY;
-     address.sin_port = htons(port);
-     if((bind(socket_fd, (struct sockaddr *)&address, sizeof(address))) < 0){
+     address_iface.sin_addr.s_addr = INADDR_ANY;
+     address_iface.sin_port = htons(port);
+
+     if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
          fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
          return -1;
      }
@@ -98,13 +100,14 @@ int main(int argc, char *argv[]){
      }
 
      int addrlen = sizeof(struct sockaddr_in);
-     if((connfd = accept(socket_fd, (struct sockaddr *)&address, &addrlen)) < 0){
+     if((connfd = accept(socket_fd, (struct sockaddr *)&address_iface, &addrlen)) < 0){
          fprintf(stderr, "Error. Socket accept failed. Quitting...\n");
          return -1;
      }
 
 
      printf("New socket is %d\n", connfd);
+     
      sleep(10);
      if(close(socket_fd) < 0){
         fprintf(stderr, "Error closing the connection.\n");
@@ -112,8 +115,26 @@ int main(int argc, char *argv[]){
      }
   }
   else{
+     //connect to a server 
+     memcpy(&address_iface, hostname, 4);
+     address_iface.sin_family = AF_INET;
+     address_iface.sin_port = htons(port);
 
+     if(connect(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface)) < 0){
+        fprintf(stderr, "Error when connecting. Quitting...\n");
+        return -1;
+     }
   }
+
+  /*
+  int input_char;
+  do{
+    input_char = getchar();
+    putchar(input_char);
+  }while(input_char != '.'); 
+  */
+
+  
 
   return 0;
 }
