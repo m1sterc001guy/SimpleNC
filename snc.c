@@ -75,5 +75,45 @@ int main(int argc, char *argv[]){
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
+
+  if(lflag){
+     int socket_fd, connfd;
+     struct sockaddr_in address;
+     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+         fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
+         return -1;
+     }
+     address.sin_family = AF_INET;
+     //i think we need to replace this with source_addr if its specified
+     address.sin_addr.s_addr = INADDR_ANY;
+     address.sin_port = htons(port);
+     if((bind(socket_fd, (struct sockaddr *)&address, sizeof(address))) < 0){
+         fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
+         return -1;
+     }
+
+     if((listen(socket_fd, 1)) < 0){
+         fprintf(stderr, "Error. Socket listening failed. Quitting...\n");
+         return -1;
+     }
+
+     int addrlen = sizeof(struct sockaddr_in);
+     if((connfd = accept(socket_fd, (struct sockaddr *)&address, &addrlen)) < 0){
+         fprintf(stderr, "Error. Socket accept failed. Quitting...\n");
+         return -1;
+     }
+
+
+     printf("New socket is %d\n", connfd);
+     sleep(10);
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
+        return -1;
+     }
+  }
+  else{
+
+  }
+
   return 0;
 }
