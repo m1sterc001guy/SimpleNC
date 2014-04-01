@@ -65,10 +65,20 @@ int main(int argc, char *argv[]){
      //hostname in this case is required
      hostname = argv[argc-2]; 
   }
-  else{
+  else if( (*argv[argc-2] == 'k') || (*argv[argc-2] == 'l') || (*argv[argc-2] == 'u') ) { 
+  	 //EDITED BY: JAMES
+  	 //hey, I'm not sure if I did this right but hopefully one of you gets the idea I'm going for.
+  	 //let me know what you think. 
+  	 //if argv[argc-2] == 'u', OR 'l', OR 'k' then it cannot be the hostname 
+     // ========================================================================
+
      //here we need to somehow check if the hostname is there or not because in this case its optional.
      //for now lets just assume it is there
-     hostname = argv[argc-2];
+     hostname = NULL;
+  }
+  else {
+  	 // otherwise it is the hostname
+  	 hostname = argv[argc-2];
   }
 
   
