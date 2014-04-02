@@ -7,7 +7,7 @@ int main(int argc, char *argv[]){
      return -1;
   }
 
-  
+   
   int c;
   int lflag = 0;
   int kflag = 0;
@@ -61,6 +61,7 @@ int main(int argc, char *argv[]){
      return -1;
   }
 
+  close_threads = 0;
   if(!lflag){
      //hostname in this case is required
      hostname = argv[argc-2]; 
@@ -118,6 +119,12 @@ int main(int argc, char *argv[]){
 
      printf("New socket is %d\n", connfd);
 
+     pthread_t read_t;
+     if(pthread_create(&read_t, NULL, read_thread, &connfd)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
      write_data(connfd); 
 
      if(close(socket_fd) < 0){
@@ -145,11 +152,15 @@ int main(int argc, char *argv[]){
         return -1;
      }
 
-     if(pthread_join(read_t, NULL)){
-        fprintf(stderr, "Error joining thread\n");
+     write_data(socket_fd);
+
+     
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
         return -1;
      }
-     
+     printf("Connection successfully closed.\n");
+
   }
 
   
@@ -162,13 +173,14 @@ void *read_thread(void *void_ptr){
      int fdlisten = *((int *)void_ptr);
      int bufsize = 1024;
      int bytes_recv;
-     while(1){
+     while(!close_threads){
         char *buffer = malloc(bufsize);
         memset(buffer, 0, bufsize);
         bytes_recv = recv(fdlisten, buffer, bufsize, 0);
         if(bytes_recv == 0){
            //EOF was triggered
            free(buffer);
+           close_threads = 1;
            break;
         }
         else if(bytes_recv < 0){
@@ -179,6 +191,7 @@ void *read_thread(void *void_ptr){
         }
         free(buffer);
      }
+     printf("Stopping read thread...\n");
 }
 
 void write_data(int fd){
@@ -186,12 +199,13 @@ void write_data(int fd){
      int message_size = 1023;
      char *message;
 
-     while(1){
+     while(!close_threads){
         message = (char *)malloc(message_size+1);
         memset(message, 0, message_size);
 
         if(getline(&message,(size_t *)&message_size, stdin) == -1){
            free(message);
+           close_threads = 1;
            break;
         }
 
@@ -201,6 +215,7 @@ void write_data(int fd){
         }
         free(message);
      }
+     printf("Exiting write loop\n");
 }
 
 
