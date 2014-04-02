@@ -119,7 +119,6 @@ int main(int argc, char *argv[]){
      printf("New socket is %d\n", connfd);
 
      //this code for writing data is correct!!
-     /*
      //what happens when the message you type is longer than 1024 bytes?
      int message_size = 1023;
      char *message;
@@ -143,12 +142,11 @@ int main(int argc, char *argv[]){
      }
 
 
-     if(close(connfd) < 0){
+     if(close(socket_fd) < 0){
         fprintf(stderr, "Error closing the connection.\n");
         return -1;
      }
      printf("Connection successfully closed.\n");
-     */
 
   }
   else{
@@ -162,7 +160,7 @@ int main(int argc, char *argv[]){
         return -1;
      }
 
-
+     //this code is correct!
      pthread_t read_t;
      if(pthread_create(&read_t, NULL, read_thread, NULL)){
         fprintf(stderr, "Error creating thread\n");
@@ -173,6 +171,8 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error joining thread\n");
         return -1;
      }
+   
+     
 
   }
 
