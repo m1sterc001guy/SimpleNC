@@ -11,4 +11,6 @@
 
 void *read_thread(void *void_ptr);
 
+void write_data(int fd);
+
 int socket_fd;

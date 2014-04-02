@@ -92,8 +92,8 @@ int main(int argc, char *argv[]){
      return -1;
   }
 
+  int connfd;
   if(lflag){
-     int connfd;
      address_iface.sin_family = AF_INET;
      //i think we need to replace this with source_addr if its specified
      address_iface.sin_addr.s_addr = INADDR_ANY;
@@ -118,35 +118,14 @@ int main(int argc, char *argv[]){
 
      printf("New socket is %d\n", connfd);
 
-     //this code for writing data is correct!!
-     //what happens when the message you type is longer than 1024 bytes?
-     int message_size = 1023;
-     char *message;
-
-     while(1){
-        message = (char *)malloc(message_size+1);
-        memset(message, 0, message_size);
-
-        if(getline(&message,(size_t *)&message_size, stdin) == -1){
-           free(message);
-           break;
-        }
-
-        //char *message = "Hello, your connection has been accepted.\n\rBut it will be termintated in about 5 seconds\n\r";
-        if(send(connfd, message, strlen(message), 0) != strlen(message)){
-           perror("send");
-           return -1;
-        }
-        //printf("Message sent successfully\n");
-        free(message);
-     }
-
+     write_data(connfd); 
 
      if(close(socket_fd) < 0){
         fprintf(stderr, "Error closing the connection.\n");
         return -1;
      }
      printf("Connection successfully closed.\n");
+
 
   }
   else{
@@ -159,10 +138,9 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error when connecting. Quitting...\n");
         return -1;
      }
-
-     //this code is correct!
+    
      pthread_t read_t;
-     if(pthread_create(&read_t, NULL, read_thread, NULL)){
+     if(pthread_create(&read_t, NULL, read_thread, &socket_fd)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
      }
@@ -171,25 +149,23 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error joining thread\n");
         return -1;
      }
-   
      
-
   }
 
   
-
   return 0;
 }
 
 
 void *read_thread(void *void_ptr){
      //read data from the server
+     int fdlisten = *((int *)void_ptr);
      int bufsize = 1024;
      int bytes_recv;
      while(1){
         char *buffer = malloc(bufsize);
         memset(buffer, 0, bufsize);
-        bytes_recv = recv(socket_fd, buffer, bufsize, 0);
+        bytes_recv = recv(fdlisten, buffer, bufsize, 0);
         if(bytes_recv == 0){
            //EOF was triggered
            free(buffer);
@@ -204,4 +180,27 @@ void *read_thread(void *void_ptr){
         free(buffer);
      }
 }
+
+void write_data(int fd){
+     //what happens when the message you type is longer than 1024 bytes?
+     int message_size = 1023;
+     char *message;
+
+     while(1){
+        message = (char *)malloc(message_size+1);
+        memset(message, 0, message_size);
+
+        if(getline(&message,(size_t *)&message_size, stdin) == -1){
+           free(message);
+           break;
+        }
+
+        if(send(fd, message, strlen(message), 0) != strlen(message)){
+           perror("send");
+           exit(-1);
+        }
+        free(message);
+     }
+}
+
 
