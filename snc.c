@@ -111,16 +111,34 @@ int main(int argc, char *argv[]){
          return -1;
      }
 
-
      printf("New socket is %d\n", connfd);
 
-     char *message = "Hello, your connection has been accepted.\n\rBut it will be termintated in about 5 seconds\n\r";
-     if(send(connfd, message, strlen(message), 0) != strlen(message)){
-        perror("send");
+     //what happens when the message you type is longer than 1024 bytes?
+     int message_size = 1023;
+     char *message;
+
+     while(1){
+        message = (char *)malloc(message_size+1);
+        memset(message, 0, message_size);
+
+        getline(&message,(size_t *)&message_size, stdin);
+
+        //char *message = "Hello, your connection has been accepted.\n\rBut it will be termintated in about 5 seconds\n\r";
+        if(send(connfd, message, strlen(message), 0) != strlen(message)){
+           perror("send");
+           return -1;
+        }
+        printf("Message sent successfully\n");
+        free(message);
+     }
+     
+     //sleep(20);
+
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
         return -1;
      }
-
-     printf("Message sent successfully\n");
+     printf("Connection successfully closed.\n");
 
      
   }
@@ -136,14 +154,16 @@ int main(int argc, char *argv[]){
      }
 
 
-     //read data from the client
+     //read data from the server
      int bufsize = 1024;
-     char *buffer = malloc(bufsize);
      int bytes_recv;
      while(1){
+        char *buffer = malloc(bufsize);
+        memset(buffer, 0, bufsize);
         bytes_recv = recv(socket_fd, buffer, bufsize, 0);
         if(bytes_recv == 0){
            //EOF was triggered
+           free(buffer);
            break;
         }
         else if(bytes_recv < 0){
@@ -152,17 +172,12 @@ int main(int argc, char *argv[]){
         else{
            printf("%s", buffer);
         }
+        free(buffer);
      }
-     free(buffer);
      
   }
 
-  if(close(socket_fd) < 0){
-     fprintf(stderr, "Error closing the connection.\n");
-     return -1;
-  }
-  printf("Connection successfully closed.\n");
-
+  
 
   return 0;
 }
