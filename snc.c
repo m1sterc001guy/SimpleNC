@@ -66,11 +66,6 @@ int main(int argc, char *argv[]){
      hostname = argv[argc-2]; 
   }
   else if( (*argv[argc-2] == 'k') || (*argv[argc-2] == 'l') || (*argv[argc-2] == 'u') ) { 
-  	 //EDITED BY: JAMES
-  	 //hey, I'm not sure if I did this right but hopefully one of you gets the idea I'm going for.
-  	 //let me know what you think. 
-  	 //if argv[argc-2] == 'u', OR 'l', OR 'k' then it cannot be the hostname 
-     // ========================================================================
 
      //here we need to somehow check if the hostname is there or not because in this case its optional.
      //for now lets just assume it is there
@@ -101,6 +96,7 @@ int main(int argc, char *argv[]){
 
      if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
          fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
+         perror("Error: ");
          return -1;
      }
 
@@ -117,12 +113,16 @@ int main(int argc, char *argv[]){
 
 
      printf("New socket is %d\n", connfd);
-     
-     sleep(10);
-     if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
+
+     char *message = "Hello, your connection has been accepted.\n\rBut it will be termintated in about 5 seconds\n\r";
+     if(send(connfd, message, strlen(message), 0) != strlen(message)){
+        perror("send");
         return -1;
      }
+
+     printf("Message sent successfully\n");
+
+     
   }
   else{
      //connect to a server 
@@ -134,17 +134,35 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error when connecting. Quitting...\n");
         return -1;
      }
+
+
+     //read data from the client
+     int bufsize = 1024;
+     char *buffer = malloc(bufsize);
+     int bytes_recv;
+     while(1){
+        bytes_recv = recv(socket_fd, buffer, bufsize, 0);
+        if(bytes_recv == 0){
+           //EOF was triggered
+           break;
+        }
+        else if(bytes_recv < 0){
+           perror("Error");
+        }
+        else{
+           printf("%s", buffer);
+        }
+     }
+     free(buffer);
+     
   }
 
-  /*
-  int input_char;
-  do{
-    input_char = getchar();
-    putchar(input_char);
-  }while(input_char != '.'); 
-  */
+  if(close(socket_fd) < 0){
+     fprintf(stderr, "Error closing the connection.\n");
+     return -1;
+  }
+  printf("Connection successfully closed.\n");
 
-  
 
   return 0;
 }
