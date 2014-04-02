@@ -11,7 +11,9 @@
 
 void *read_thread(void *void_ptr);
 
-void write_data(int fd);
+void *write_data(void *void_ptr);
 
 int socket_fd;
 int close_threads;
+pthread_t read_t;
+pthread_t write_t;
