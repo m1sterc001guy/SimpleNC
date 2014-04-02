@@ -7,3 +7,8 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <errno.h>
+#include <pthread.h>
+
+void *read_thread(void *void_ptr);
+
+int socket_fd;

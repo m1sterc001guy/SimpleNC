@@ -80,7 +80,6 @@ int main(int argc, char *argv[]){
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
-  int socket_fd;
   struct sockaddr_in address_iface;
   if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
       fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
@@ -119,6 +118,8 @@ int main(int argc, char *argv[]){
 
      printf("New socket is %d\n", connfd);
 
+     //this code for writing data is correct!!
+     /*
      //what happens when the message you type is longer than 1024 bytes?
      int message_size = 1023;
      char *message;
@@ -147,9 +148,8 @@ int main(int argc, char *argv[]){
         return -1;
      }
      printf("Connection successfully closed.\n");
+     */
 
-     
-     
   }
   else{
      //connect to a server 
@@ -163,6 +163,26 @@ int main(int argc, char *argv[]){
      }
 
 
+     pthread_t read_t;
+     if(pthread_create(&read_t, NULL, read_thread, NULL)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
+     if(pthread_join(read_t, NULL)){
+        fprintf(stderr, "Error joining thread\n");
+        return -1;
+     }
+
+  }
+
+  
+
+  return 0;
+}
+
+
+void *read_thread(void *void_ptr){
      //read data from the server
      int bufsize = 1024;
      int bytes_recv;
@@ -183,17 +203,5 @@ int main(int argc, char *argv[]){
         }
         free(buffer);
      }
-
-     /*
-     if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
-        return -1;
-     }
-     printf("Connection successfully closed.\n");
-     */
-  }
-
-  
-
-  return 0;
 }
+

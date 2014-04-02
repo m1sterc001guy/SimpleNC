@@ -1,6 +1,6 @@
 all: snc
 
 snc: snc.c
-	gcc snc.c -o snc
+	gcc -pthread snc.c -o snc
 clean:
 	rm -rf *o snc
