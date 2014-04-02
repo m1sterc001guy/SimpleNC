@@ -206,7 +206,6 @@ void *read_thread(void *void_ptr){
         }
         free(buffer);
      }
-     printf("Stopping read thread...\n");
 }
 
 void *write_data(void *void_ptr){
@@ -236,7 +235,6 @@ void *write_data(void *void_ptr){
            exit(-1);
         }
      }
-     printf("Exiting write loop\n");
 }
 
 
