@@ -87,6 +87,12 @@ int main(int argc, char *argv[]){
       return -1;
   }
 
+  int reuse_port;
+  if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_port, sizeof(reuse_port))){
+     perror("setsockopt");
+     return -1;
+  }
+
   if(lflag){
      int connfd;
      address_iface.sin_family = AF_INET;
@@ -121,25 +127,28 @@ int main(int argc, char *argv[]){
         message = (char *)malloc(message_size+1);
         memset(message, 0, message_size);
 
-        getline(&message,(size_t *)&message_size, stdin);
+        if(getline(&message,(size_t *)&message_size, stdin) == -1){
+           free(message);
+           break;
+        }
 
         //char *message = "Hello, your connection has been accepted.\n\rBut it will be termintated in about 5 seconds\n\r";
         if(send(connfd, message, strlen(message), 0) != strlen(message)){
            perror("send");
            return -1;
         }
-        printf("Message sent successfully\n");
+        //printf("Message sent successfully\n");
         free(message);
      }
-     
-     //sleep(20);
 
-     if(close(socket_fd) < 0){
+
+     if(close(connfd) < 0){
         fprintf(stderr, "Error closing the connection.\n");
         return -1;
      }
      printf("Connection successfully closed.\n");
 
+     
      
   }
   else{
@@ -174,7 +183,14 @@ int main(int argc, char *argv[]){
         }
         free(buffer);
      }
-     
+
+     /*
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
+        return -1;
+     }
+     printf("Connection successfully closed.\n");
+     */
   }
 
   
