@@ -258,68 +258,55 @@ int connect_to_server(){
 
 
 int create_udp_server(){
-     if(pthread_create(&read_t, NULL, read_thread_udp, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
+
+     struct sockaddr_in server_addr;
+     server_addr.sin_family = AF_INET;
+     server_addr.sin_port = htons(port);
+     server_addr.sin_addr.s_addr = INADDR_ANY;
+     bzero(&(server_addr.sin_zero), 8);
+
+     struct sockaddr_in client_addr;
+
+    if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
+        perror("UDP Bind");
+        exit(-1);
      }
 
-     if(pthread_create(&write_t, NULL, write_thread_udp, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
-     }
+     write_thread_udp(&server_addr);
 
-     if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
-     }
+     
      return 0;
 }
 
 
 int create_udp_client(){
 
-     if(pthread_create(&read_t, NULL, read_thread_udp, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
-     }
+     struct sockaddr_in server_addr;
+     struct hostent *host;
+     host = (struct hostent *)(gethostbyname((const char *)"127.0.0.1"));
+     server_addr.sin_family = AF_INET;
+     server_addr.sin_port = htons(port);
+     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+     bzero(&(server_addr.sin_zero), 8);
 
-     if(pthread_create(&write_t, NULL, write_thread_udp, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
-     }
-
-     if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
-     }
+     read_thread_udp(&server_addr);
 
      return 0;
 }
 
 
 void *read_thread_udp(void *void_ptr){
-     struct sockaddr_in server_addr;
-     struct sockaddr_in client_addr;
 
-     server_addr.sin_family = AF_INET;
-     server_addr.sin_port = htons(port);
-     server_addr.sin_addr.s_addr = INADDR_ANY;
-     bzero(&(server_addr.sin_zero), 8);
-
+     struct sockaddr_in addr = *((struct sockaddr_in *)void_ptr);
      int bytes_read;
      char recv_data[1024];
      int addr_len;
   
-     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
-        perror("UDP Bind");
-        exit(-1);
-     }
-
      addr_len = sizeof(struct sockaddr);
 
      while(1){
         memset(recv_data, 0, sizeof(recv_data));
-        bytes_read = recvfrom(socket_fd, recv_data, sizeof(recv_data), 0, (struct sockaddr *)&client_addr, &addr_len);
+        bytes_read = recvfrom(socket_fd, recv_data, sizeof(recv_data), 0, (struct sockaddr *)&addr, &addr_len);
         printf("%s", recv_data);
      }
 }
@@ -327,17 +314,10 @@ void *read_thread_udp(void *void_ptr){
 
 void *write_thread_udp(void *void_ptr){
      int bytes_recv;
-     struct sockaddr_in server_addr;
-     struct hostent *host;
      char send_data[1024];
 
-     host = (struct hostent *)(gethostbyname((const char *)"127.0.0.1"));
-
-     server_addr.sin_family = AF_INET;
-     server_addr.sin_port = htons(port);
-     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-     bzero(&(server_addr.sin_zero), 8);
-
+     struct sockaddr_in addr = *((struct sockaddr_in *)void_ptr);
+     
      while(1){
         memset(send_data, 0, sizeof(send_data));
 
@@ -351,7 +331,7 @@ void *write_thread_udp(void *void_ptr){
         }
         send_data[cur_index] = '\n';
         
-        sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+        sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&addr, sizeof(struct sockaddr));
      }
 }
 
