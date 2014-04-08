@@ -63,25 +63,28 @@ int main(int argc, char *argv[]){
      //hostname in this case is required
      hostname = argv[argc-2]; 
   }
-  else if( (*argv[argc-2] == 'k') || (*argv[argc-2] == 'l') || (*argv[argc-2] == 'u') ) { 
-
-     //here we need to somehow check if the hostname is there or not because in this case its optional.
-     //for now lets just assume it is there
-     hostname = NULL;
-  }
   else {
-  	 // otherwise it is the hostname
-  	 hostname = argv[argc-2];
+     // otherwise it is the hostname
+     hostname = argv[argc-2];
   }
 
   
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
-  if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-      fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
-      return -1;
+  if(!uflag){
+     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        fprintf(stderr, "Error. TCP Socket failed to initialize. Quitting...\n");
+        return -1;
+     }
   }
+  else{
+     if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+        fprintf(stderr, "Error. UDP Socket failed to initialize. Quitting...\n");
+        return -1;
+     }
+  }
+  
 
   int reuse_port;
   if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_port, sizeof(reuse_port))){
@@ -89,31 +92,40 @@ int main(int argc, char *argv[]){
      return -1;
   }
 
-  if(lflag){
-     if(listen_and_accept_connection() < 0){
-        fprintf(stderr, "Error listening and accepting connection\n");
-        return -1;
-     }   
+  if(!uflag){
+    if(lflag){
+       if(listen_and_accept_connection() < 0){
+          fprintf(stderr, "Error listening and accepting connection\n");
+          return -1;
+       }   
+    }
+    else{
+       if(connect_to_server() < 0){
+          fprintf(stderr, "Error connecting to server\n");
+          return -1;
+       } 
+    }
   }
   else{
-     if(connect_to_server() < 0){
-        fprintf(stderr, "Error connecting to server\n");
-        return -1;
-     } 
+    if(lflag){
+       create_udp_server();
+    }
+    else{
+       create_udp_client();
+    }
   }
-
   
   return 0;
 }
 
 
-void *read_thread(void *void_ptr){
+void *read_thread_tcp(void *void_ptr){
      //read data from the server
      int fdlisten = *((int *)void_ptr);
      int bufsize = 1024;
      int bytes_recv;
      while(1){
-        char *buffer = malloc(bufsize);
+        char buffer[bufsize];
         memset(buffer, 0, bufsize);
         bytes_recv = recv(fdlisten, buffer, bufsize, 0);
         if(bytes_recv == 0){
@@ -128,11 +140,10 @@ void *read_thread(void *void_ptr){
         else{
            printf("%s", buffer);
         }
-        free(buffer);
      }
 }
 
-void *write_data(void *void_ptr){
+void *write_thread_tcp(void *void_ptr){
      int fd = *((int *)void_ptr);
      //what happens when the message you type is longer than 1024 bytes?
      int message_size = 1023;
@@ -165,7 +176,6 @@ int listen_and_accept_connection(){
      int connfd;
      struct sockaddr_in address_iface;
      address_iface.sin_family = AF_INET;
-     //i think we need to replace this with source_addr if its specified
      address_iface.sin_addr.s_addr = INADDR_ANY;
      address_iface.sin_port = htons(port);
 
@@ -188,12 +198,12 @@ int listen_and_accept_connection(){
 
      printf("New socket is %d\n", connfd);
 
-     if(pthread_create(&read_t, NULL, read_thread, &connfd)){
+     if(pthread_create(&read_t, NULL, read_thread_tcp, &connfd)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
      }
 
-     if(pthread_create(&write_t, NULL, write_data, &connfd)){
+     if(pthread_create(&write_t, NULL, write_thread_tcp, &connfd)){
         fprintf(stderr, "Error creating write thread\n");
         return -1;
      }
@@ -223,12 +233,12 @@ int connect_to_server(){
         return -1;
      }
     
-     if(pthread_create(&read_t, NULL, read_thread, &socket_fd)){
+     if(pthread_create(&read_t, NULL, read_thread_tcp, &socket_fd)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
      }
 
-     if(pthread_create(&write_t, NULL, write_data, &socket_fd)){
+     if(pthread_create(&write_t, NULL, write_thread_tcp, &socket_fd)){
         fprintf(stderr, "Error creating write thread\n");
         return -1;
      }
@@ -238,9 +248,6 @@ int connect_to_server(){
         return -1;
      }
 
-     //write_data(&socket_fd);
-
-     
      if(close(socket_fd) < 0){
         fprintf(stderr, "Error closing the connection.\n");
         return -1;
@@ -249,5 +256,103 @@ int connect_to_server(){
      return 0;
 }
 
+
+int create_udp_server(){
+     if(pthread_create(&read_t, NULL, read_thread_udp, &socket_fd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_create(&write_t, NULL, write_thread_udp, &socket_fd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_join(write_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
+     }
+     return 0;
+}
+
+
+int create_udp_client(){
+
+     if(pthread_create(&read_t, NULL, read_thread_udp, &socket_fd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_create(&write_t, NULL, write_thread_udp, &socket_fd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_join(write_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
+     }
+
+     return 0;
+}
+
+
+void *read_thread_udp(void *void_ptr){
+     struct sockaddr_in server_addr;
+     struct sockaddr_in client_addr;
+
+     server_addr.sin_family = AF_INET;
+     server_addr.sin_port = htons(port);
+     server_addr.sin_addr.s_addr = INADDR_ANY;
+     bzero(&(server_addr.sin_zero), 8);
+
+     int bytes_read;
+     char recv_data[1024];
+     int addr_len;
+  
+     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
+        perror("UDP Bind");
+        exit(-1);
+     }
+
+     addr_len = sizeof(struct sockaddr);
+
+     while(1){
+        memset(recv_data, 0, sizeof(recv_data));
+        bytes_read = recvfrom(socket_fd, recv_data, sizeof(recv_data), 0, (struct sockaddr *)&client_addr, &addr_len);
+        printf("%s", recv_data);
+     }
+}
+
+
+void *write_thread_udp(void *void_ptr){
+     int bytes_recv;
+     struct sockaddr_in server_addr;
+     struct hostent *host;
+     char send_data[1024];
+
+     host = (struct hostent *)(gethostbyname((const char *)"127.0.0.1"));
+
+     server_addr.sin_family = AF_INET;
+     server_addr.sin_port = htons(port);
+     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+     bzero(&(server_addr.sin_zero), 8);
+
+     while(1){
+        memset(send_data, 0, sizeof(send_data));
+
+        int cur_index = 0;
+        int c = getchar();
+        //add possbile length check here too
+        while(c != '\n'){
+           send_data[cur_index] = c;
+           cur_index++;
+           c = getchar();
+        }
+        send_data[cur_index] = '\n';
+        
+        sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+     }
+}
 
 
