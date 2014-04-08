@@ -13,8 +13,6 @@ int main(int argc, char *argv[]){
   int kflag = 0;
   int uflag = 0;
   char *source_ip = NULL;
-  int port;
-  char *hostname = NULL;
   while((c = getopt(argc, argv, "klus:")) != -1){
      switch(c){
         case 'k':
@@ -80,7 +78,6 @@ int main(int argc, char *argv[]){
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
-  struct sockaddr_in address_iface;
   if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
       fprintf(stderr, "Error. Socket failed to initialize. Quitting...\n");
       return -1;
@@ -92,90 +89,17 @@ int main(int argc, char *argv[]){
      return -1;
   }
 
-  int connfd;
   if(lflag){
-     address_iface.sin_family = AF_INET;
-     //i think we need to replace this with source_addr if its specified
-     address_iface.sin_addr.s_addr = INADDR_ANY;
-     address_iface.sin_port = htons(port);
-
-     if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
-         fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
-         perror("Error: ");
-         return -1;
-     }
-
-     if((listen(socket_fd, 1)) < 0){
-         fprintf(stderr, "Error. Socket listening failed. Quitting...\n");
-         return -1;
-     }
-
-     int addrlen = sizeof(struct sockaddr_in);
-     if((connfd = accept(socket_fd, (struct sockaddr *)&address_iface, &addrlen)) < 0){
-         fprintf(stderr, "Error. Socket accept failed. Quitting...\n");
-         return -1;
-     }
-
-     printf("New socket is %d\n", connfd);
-
-     if(pthread_create(&read_t, NULL, read_thread, &connfd)){
-        fprintf(stderr, "Error creating thread\n");
+     if(listen_and_accept_connection() < 0){
+        fprintf(stderr, "Error listening and accepting connection\n");
         return -1;
-     }
-
-     if(pthread_create(&write_t, NULL, write_data, &connfd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
-     }
-
-     if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
-     }
-
-     if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
-        return -1;
-     }
-     printf("Connection successfully closed.\n");
-
-
+     }   
   }
   else{
-     //connect to a server 
-     memcpy(&address_iface, hostname, 4);
-     address_iface.sin_family = AF_INET;
-     address_iface.sin_port = htons(port);
-
-     if(connect(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface)) < 0){
-        fprintf(stderr, "Error when connecting. Quitting...\n");
+     if(connect_to_server() < 0){
+        fprintf(stderr, "Error connecting to server\n");
         return -1;
-     }
-    
-     if(pthread_create(&read_t, NULL, read_thread, &socket_fd)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
-     }
-
-     if(pthread_create(&write_t, NULL, write_data, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
-     }
-
-     if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
-     }
-
-     //write_data(&socket_fd);
-
-     
-     if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
-        return -1;
-     }
-     printf("Connection successfully closed.\n");
-
+     } 
   }
 
   
@@ -236,5 +160,94 @@ void *write_data(void *void_ptr){
         }
      }
 }
+
+int listen_and_accept_connection(){
+     int connfd;
+     struct sockaddr_in address_iface;
+     address_iface.sin_family = AF_INET;
+     //i think we need to replace this with source_addr if its specified
+     address_iface.sin_addr.s_addr = INADDR_ANY;
+     address_iface.sin_port = htons(port);
+
+     if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
+         fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
+         perror("Error: ");
+         return -1;
+     }
+
+     if((listen(socket_fd, 1)) < 0){
+         fprintf(stderr, "Error. Socket listening failed. Quitting...\n");
+         return -1;
+     }
+
+     int addrlen = sizeof(struct sockaddr_in);
+     if((connfd = accept(socket_fd, (struct sockaddr *)&address_iface, &addrlen)) < 0){
+         fprintf(stderr, "Error. Socket accept failed. Quitting...\n");
+         return -1;
+     }
+
+     printf("New socket is %d\n", connfd);
+
+     if(pthread_create(&read_t, NULL, read_thread, &connfd)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
+     if(pthread_create(&write_t, NULL, write_data, &connfd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_join(write_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
+     }
+
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
+        return -1;
+     }
+     printf("Connection successfully closed.\n");
+     return 0;
+}
+
+int connect_to_server(){
+     struct sockaddr_in address_iface;
+     //connect to a server 
+     memcpy(&address_iface, hostname, 4);
+     address_iface.sin_family = AF_INET;
+     address_iface.sin_port = htons(port);
+
+     if(connect(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface)) < 0){
+        fprintf(stderr, "Error when connecting. Quitting...\n");
+        return -1;
+     }
+    
+     if(pthread_create(&read_t, NULL, read_thread, &socket_fd)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
+     if(pthread_create(&write_t, NULL, write_data, &socket_fd)){
+        fprintf(stderr, "Error creating write thread\n");
+        return -1;
+     }
+
+     if(pthread_join(write_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
+     }
+
+     //write_data(&socket_fd);
+
+     
+     if(close(socket_fd) < 0){
+        fprintf(stderr, "Error closing the connection.\n");
+        return -1;
+     }
+     printf("Connection successfully closed.\n");
+     return 0;
+}
+
 
 
