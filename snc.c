@@ -275,18 +275,13 @@ int create_udp_server(){
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
      server_addr.sin_addr.s_addr = INADDR_ANY;
-     int recvlen;
-     //unsigned char buf[1024];
-     char *buf = "server_to_client\0";
 
-     socklen_t addrlen = sizeof(addr);
 
     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
         perror("UDP Bind");
         exit(-1);
      }
 
-     //read_thread_udp(NULL);
      if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
@@ -297,13 +292,6 @@ int create_udp_server(){
         return -1;
      }
      
-     /*
-     if(sendto(socket_fd, buf, strlen(buf), 0, (struct sockaddr *)&addr, addrlen) < 0){
-        perror("sendto");
-        return -1;
-     }
-     */
-
      if(pthread_join(read_t, NULL)){
         fprintf(stderr, "Error joing thread\n");
         return -1;
@@ -325,26 +313,16 @@ int create_udp_client(){
      memcpy(&addr, &server_addr, sizeof(struct sockaddr_in));
 
 
-     char *my_message = "this is a test message";
-    
-
      if(!host){
         fprintf(stderr, "host is NULL\n");
         return -1;
      }
-
-     /*
-     if(sendto(socket_fd, my_message, strlen(my_message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
-        perror("sento failed");
-     } 
-     */
 
      if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
      }
 
-     //read_thread_udp(NULL);
      if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
         fprintf(stderr, "Error creating thread\n");
         return -1;
@@ -367,17 +345,9 @@ void *read_thread_udp(void *void_ptr){
 
 
     while(1){
-        printf("waiting on port %d\n", port);
         recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&addr, &fromlen); 
-        printf("received %d bytes\n", recvlen);
-        if(recvlen > 0){
-           buf[recvlen] = 0;
-           printf("received message: \%s\"\n", buf);
-        }
-        else if(recvlen < 0){
-           perror("recvfrom -1");
-           exit(-1);
-        }
+        buf[recvlen] = 0;
+        printf("%s", buf);
      }
 }
 
