@@ -271,20 +271,35 @@ int connect_to_server(){
 int create_udp_server(){
 
      struct sockaddr_in server_addr;
+     memset((char *)&server_addr, 0, sizeof(server_addr));
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
      server_addr.sin_addr.s_addr = INADDR_ANY;
-     bzero(&(server_addr.sin_zero), 8);
+     int recvlen;
+     unsigned char buf[1024];
 
      struct sockaddr_in client_addr;
+     socklen_t addrlen = sizeof(client_addr);
 
     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
         perror("UDP Bind");
         exit(-1);
      }
 
-     write_thread_udp(&server_addr);
+     for(;;){
+        printf("waiting on port %d\n", port);
+        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&client_addr, &addrlen); 
+        printf("received %d bytes\n", recvlen);
+        if(recvlen > 0){
+           buf[recvlen] = 0;
+           printf("received message: \%s\"\n", buf);
+           break;
+        }
+     }
 
+     sleep(5);
+
+     sendto(socket_fd, buf, strlen(buf), 0, (struct sockaddr *)&client_addr, addrlen);
      
      return 0;
 }
@@ -294,13 +309,45 @@ int create_udp_client(){
 
      struct sockaddr_in server_addr;
      struct hostent *host;
-     host = (struct hostent *)(gethostbyname((const char *)"127.0.0.1"));
+     host = gethostbyname("127.0.0.1");
+     memset((char *)&server_addr, 0, sizeof(server_addr));
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
      server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-     bzero(&(server_addr.sin_zero), 8);
+     //memcpy((void *)&server_addr.sin_addr, host->h_addr_list[0], host->h_length);
+     //printf("copied %s into the address\n", host->h_addr_list[0]);     
 
-     read_thread_udp(&server_addr);
+
+     char *my_message = "this is a test message";
+     unsigned char buf[1024];
+     int recvlen;
+     int fromlen = sizeof(server_addr);
+    
+
+     if(!host){
+        fprintf(stderr, "host is NULL\n");
+        return -1;
+     }
+
+
+     if(sendto(socket_fd, my_message, strlen(my_message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
+        perror("sento failed");
+     } 
+
+     for(;;){
+        printf("waiting on port %d\n", port);
+        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&server_addr, &fromlen); 
+        printf("received %d bytes\n", recvlen);
+        if(recvlen > 0){
+           buf[recvlen] = 0;
+           printf("received message: \%s\"\n", buf);
+           break;
+        }
+        else if(recvlen < 0){
+           perror("recvfrom -1");
+           return -1;
+        }
+     }
 
      return 0;
 }
@@ -311,9 +358,8 @@ void *read_thread_udp(void *void_ptr){
      struct sockaddr_in addr = *((struct sockaddr_in *)void_ptr);
      int bytes_read;
      char recv_data[1024];
-     int addr_len;
   
-     addr_len = sizeof(struct sockaddr);
+     socklen_t addr_len = sizeof(struct sockaddr);
 
      while(1){
         memset(recv_data, 0, sizeof(recv_data));
