@@ -23,5 +23,6 @@ int socket_fd;
 int close_threads;
 int port;
 char *hostname = NULL;
+char *ip = NULL;
 pthread_t read_t;
 pthread_t write_t;
