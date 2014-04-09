@@ -276,30 +276,38 @@ int create_udp_server(){
      server_addr.sin_port = htons(port);
      server_addr.sin_addr.s_addr = INADDR_ANY;
      int recvlen;
-     unsigned char buf[1024];
+     //unsigned char buf[1024];
+     char *buf = "server_to_client\0";
 
-     struct sockaddr_in client_addr;
-     socklen_t addrlen = sizeof(client_addr);
+     socklen_t addrlen = sizeof(addr);
 
     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
         perror("UDP Bind");
         exit(-1);
      }
 
-     for(;;){
-        printf("waiting on port %d\n", port);
-        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&client_addr, &addrlen); 
-        printf("received %d bytes\n", recvlen);
-        if(recvlen > 0){
-           buf[recvlen] = 0;
-           printf("received message: \%s\"\n", buf);
-           break;
-        }
+     //read_thread_udp(NULL);
+     if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
      }
 
-     sleep(5);
+     if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+     
+     /*
+     if(sendto(socket_fd, buf, strlen(buf), 0, (struct sockaddr *)&addr, addrlen) < 0){
+        perror("sendto");
+        return -1;
+     }
+     */
 
-     sendto(socket_fd, buf, strlen(buf), 0, (struct sockaddr *)&client_addr, addrlen);
+     if(pthread_join(read_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
+     }
      
      return 0;
 }
@@ -314,14 +322,10 @@ int create_udp_client(){
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
      server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-     //memcpy((void *)&server_addr.sin_addr, host->h_addr_list[0], host->h_length);
-     //printf("copied %s into the address\n", host->h_addr_list[0]);     
+     memcpy(&addr, &server_addr, sizeof(struct sockaddr_in));
 
 
      char *my_message = "this is a test message";
-     unsigned char buf[1024];
-     int recvlen;
-     int fromlen = sizeof(server_addr);
     
 
      if(!host){
@@ -329,24 +333,26 @@ int create_udp_client(){
         return -1;
      }
 
-
+     /*
      if(sendto(socket_fd, my_message, strlen(my_message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
         perror("sento failed");
      } 
+     */
 
-     for(;;){
-        printf("waiting on port %d\n", port);
-        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&server_addr, &fromlen); 
-        printf("received %d bytes\n", recvlen);
-        if(recvlen > 0){
-           buf[recvlen] = 0;
-           printf("received message: \%s\"\n", buf);
-           break;
-        }
-        else if(recvlen < 0){
-           perror("recvfrom -1");
-           return -1;
-        }
+     if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
+     //read_thread_udp(NULL);
+     if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
+        fprintf(stderr, "Error creating thread\n");
+        return -1;
+     }
+
+     if(pthread_join(read_t, NULL)){
+        fprintf(stderr, "Error joing thread\n");
+        return -1;
      }
 
      return 0;
@@ -354,17 +360,24 @@ int create_udp_client(){
 
 
 void *read_thread_udp(void *void_ptr){
+   
+    int recvlen;
+    unsigned char buf[1024];
+    socklen_t fromlen = sizeof(addr);
 
-     struct sockaddr_in addr = *((struct sockaddr_in *)void_ptr);
-     int bytes_read;
-     char recv_data[1024];
-  
-     socklen_t addr_len = sizeof(struct sockaddr);
 
-     while(1){
-        memset(recv_data, 0, sizeof(recv_data));
-        bytes_read = recvfrom(socket_fd, recv_data, sizeof(recv_data), 0, (struct sockaddr *)&addr, &addr_len);
-        printf("%s", recv_data);
+    while(1){
+        printf("waiting on port %d\n", port);
+        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&addr, &fromlen); 
+        printf("received %d bytes\n", recvlen);
+        if(recvlen > 0){
+           buf[recvlen] = 0;
+           printf("received message: \%s\"\n", buf);
+        }
+        else if(recvlen < 0){
+           perror("recvfrom -1");
+           exit(-1);
+        }
      }
 }
 
@@ -373,7 +386,7 @@ void *write_thread_udp(void *void_ptr){
      int bytes_recv;
      char send_data[1024];
 
-     struct sockaddr_in addr = *((struct sockaddr_in *)void_ptr);
+     socklen_t addrlen = sizeof(addr);
      
      while(1){
         memset(send_data, 0, sizeof(send_data));
@@ -387,8 +400,12 @@ void *write_thread_udp(void *void_ptr){
            c = getchar();
         }
         send_data[cur_index] = '\n';
-        
-        sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&addr, sizeof(struct sockaddr));
+
+
+        if(sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&addr, addrlen) < 0){
+           perror("sendto");
+           exit(-1);
+        }
      }
 }
 
