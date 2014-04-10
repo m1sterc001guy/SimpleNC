@@ -18,10 +18,12 @@ int listen_and_accept_connection();
 int connect_to_server();
 int create_udp_server();
 int create_udp_client();
+int create_socket(int uflag);
 
 int socket_fd;
 int close_threads;
 int port;
+int kflag;
 char *hostname = NULL;
 char *ip = NULL;
 struct sockaddr_in addr;

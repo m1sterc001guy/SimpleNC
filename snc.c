@@ -10,7 +10,7 @@ int main(int argc, char *argv[]){
    
   int c;
   int lflag = 0;
-  int kflag = 0;
+  kflag = 0;
   int uflag = 0;
   char *source_ip = NULL;
   while((c = getopt(argc, argv, "klus:")) != -1){
@@ -83,32 +83,26 @@ int main(int argc, char *argv[]){
 
   printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
-  if(!uflag){
-     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        fprintf(stderr, "Error. TCP Socket failed to initialize. Quitting...\n");
-        return -1;
-     }
-  }
-  else{
-     if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
-        fprintf(stderr, "Error. UDP Socket failed to initialize. Quitting...\n");
-        return -1;
-     }
-  }
-  
-
-  int reuse_port;
-  if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_port, sizeof(reuse_port))){
-     perror("setsockopt");
-     return -1;
-  }
+  create_socket(uflag); 
 
   if(!uflag){
     if(lflag){
-       if(listen_and_accept_connection() < 0){
-          fprintf(stderr, "Error listening and accepting connection\n");
-          return -1;
-       }   
+
+       if(!kflag){
+          if(listen_and_accept_connection() < 0){
+             fprintf(stderr, "Error listening and accepting connection\n");
+             return -1;
+          }
+       }
+       else{
+          while(1){
+             if(listen_and_accept_connection() < 0){
+                fprintf(stderr, "Error listening and accepting connection\n");
+                return -1;
+             }
+             create_socket(uflag);
+          }
+       }
     }
     else{
        if(connect_to_server() < 0){
@@ -141,7 +135,6 @@ void *read_thread_tcp(void *void_ptr){
         bytes_recv = recv(fdlisten, buffer, bufsize, 0);
         if(bytes_recv == 0){
            //EOF was triggered
-           free(buffer);
            pthread_cancel(write_t);
            break;
         }
@@ -166,9 +159,11 @@ void *write_thread_tcp(void *void_ptr){
         int cur_index = 0;
         int c = getchar();
         //add possbile length check here too
-        while(c != '\n' && c != EOF){
-           message[cur_index] = c;
-           cur_index++;
+        while(c != '\n' && (c != EOF || kflag)){
+           if(c != EOF){
+              message[cur_index] = c;
+              cur_index++;
+           }
            c = getchar();
         }
         message[cur_index] = '\n';
@@ -185,6 +180,7 @@ void *write_thread_tcp(void *void_ptr){
 
 int listen_and_accept_connection(){
      int connfd;
+
      struct sockaddr_in address_iface;
      address_iface.sin_family = AF_INET;
      address_iface.sin_addr.s_addr = INADDR_ANY;
@@ -296,6 +292,8 @@ int create_udp_server(){
         fprintf(stderr, "Error joing thread\n");
         return -1;
      }
+
+     close(socket_fd);
      
      return 0;
 }
@@ -333,6 +331,8 @@ int create_udp_client(){
         return -1;
      }
 
+     close(socket_fd);
+
      return 0;
 }
 
@@ -345,6 +345,7 @@ void *read_thread_udp(void *void_ptr){
 
 
     while(1){
+        memset(buf, 0, sizeof(buf));
         recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&addr, &fromlen); 
         buf[recvlen] = 0;
         printf("%s", buf);
@@ -377,6 +378,29 @@ void *write_thread_udp(void *void_ptr){
            exit(-1);
         }
      }
+}
+
+
+int create_socket(int uflag){
+  if(!uflag){
+     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        fprintf(stderr, "Error. TCP Socket failed to initialize. Quitting...\n");
+        return -1;
+     }
+  }
+  else{
+     if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+        fprintf(stderr, "Error. UDP Socket failed to initialize. Quitting...\n");
+        return -1;
+     }
+  }
+  
+
+  int reuse_port;
+  if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_port, sizeof(reuse_port))){
+     perror("setsockopt");
+     return -1;
+  }
 }
 
 /*
