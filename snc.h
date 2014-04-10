@@ -19,6 +19,7 @@ int connect_to_server();
 int create_udp_server();
 int create_udp_client();
 int create_socket(int uflag);
+void print_invalid_params();
 
 int socket_fd;
 int close_threads;

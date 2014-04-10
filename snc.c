@@ -3,8 +3,8 @@
 int main(int argc, char *argv[]){
 
   if(argc > 7 || argc < 3){
-     fprintf(stderr, "Error. Incorrect number of arguments\n");
-     return -1;
+     print_invalid_params();
+     exit(1);
   }
 
    
@@ -28,17 +28,11 @@ int main(int argc, char *argv[]){
           source_ip = optarg;
           break;
         case '?':
-          if(optopt == 's')
-             fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-          else if(isprint(optopt))
-             fprintf(stderr, "Unknown option '-%c'.\n", optopt);
-          else
-             fprintf(stderr, "Unknown option character '\\x%x',\n", optopt);
-          return -1;
-          break;
+          print_invalid_params();
+          exit(1); 
         default:
-          fprintf(stderr, "An error occurred. Quitting...\n");
-          return -1;
+          print_invalid_params();
+          exit(1);
      }
   }
 
@@ -401,6 +395,10 @@ int create_socket(int uflag){
      perror("setsockopt");
      return -1;
   }
+}
+
+void print_invalid_params(){
+  fprintf(stderr, "invalid or missing options\nusage: snc [-k] [-l] [-u] [-s source_ip_address] [hostname] port\n");
 }
 
 /*
