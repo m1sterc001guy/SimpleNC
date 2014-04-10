@@ -37,20 +37,20 @@ int main(int argc, char *argv[]){
   }
 
   if(kflag && !lflag){
-     fprintf(stderr, "Invalid arguments. Quitting...\n");
-     return -1;
+     print_internal_error();
+     exit(1);
   }
   if(source_ip && lflag){
-     fprintf(stderr, "Invalid arguments. Quitting...\n");
-     return -1;
+     print_internal_error();
+     exit(1);
   }
 
 
   //check to make sure the last argument is a valid port
   port = strtol(argv[argc-1], NULL, 10);
   if(port <= 0 || port > 65535){
-     fprintf(stderr, "Error. Invalid port specified\n");
-     return -1;
+     print_internal_error();
+     exit(1);
   }
 
   if(!lflag){
@@ -84,15 +84,15 @@ int main(int argc, char *argv[]){
 
        if(!kflag){
           if(listen_and_accept_connection() < 0){
-             fprintf(stderr, "Error listening and accepting connection\n");
-             return -1;
+             print_internal_error();
+             exit(1);
           }
        }
        else{
           while(1){
              if(listen_and_accept_connection() < 0){
-                fprintf(stderr, "Error listening and accepting connection\n");
-                return -1;
+                print_internal_error();
+                exit(1);
              }
              create_socket(uflag);
           }
@@ -100,8 +100,8 @@ int main(int argc, char *argv[]){
     }
     else{
        if(connect_to_server() < 0){
-          fprintf(stderr, "Error connecting to server\n");
-          return -1;
+          print_internal_error();
+          exit(1);
        } 
     }
   }
@@ -133,7 +133,8 @@ void *read_thread_tcp(void *void_ptr){
            break;
         }
         else if(bytes_recv < 0){
-           perror("Error");
+           print_internal_error();
+           exit(1);
         }
         else{
            printf("%s", buffer);
@@ -166,8 +167,8 @@ void *write_thread_tcp(void *void_ptr){
         }
 
         if(send(fd, message, strlen(message), 0) != strlen(message)){
-           perror("send");
-           exit(-1);
+           print_internal_error();
+           exit(1);
         }
      }
 }
@@ -181,42 +182,41 @@ int listen_and_accept_connection(){
      address_iface.sin_port = htons(port);
 
      if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
-         fprintf(stderr, "Error. Socket binding failed. Quitting...\n");
-         perror("Error: ");
-         return -1;
+         print_internal_error();
+         exit(1);
      }
 
      if((listen(socket_fd, 1)) < 0){
-         fprintf(stderr, "Error. Socket listening failed. Quitting...\n");
-         return -1;
+         print_internal_error();
+         exit(1);
      }
 
      int addrlen = sizeof(struct sockaddr_in);
      if((connfd = accept(socket_fd, (struct sockaddr *)&address_iface, &addrlen)) < 0){
-         fprintf(stderr, "Error. Socket accept failed. Quitting...\n");
-         return -1;
+         print_internal_error();
+         exit(1);
      }
 
      printf("New socket is %d\n", connfd);
 
      if(pthread_create(&read_t, NULL, read_thread_tcp, &connfd)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&write_t, NULL, write_thread_tcp, &connfd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
      printf("Connection successfully closed.\n");
      return 0;
@@ -230,28 +230,28 @@ int connect_to_server(){
      address_iface.sin_port = htons(port);
 
      if(connect(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface)) < 0){
-        fprintf(stderr, "Error when connecting. Quitting...\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
     
      if(pthread_create(&read_t, NULL, read_thread_tcp, &socket_fd)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&write_t, NULL, write_thread_tcp, &socket_fd)){
-        fprintf(stderr, "Error creating write thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_join(write_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(close(socket_fd) < 0){
-        fprintf(stderr, "Error closing the connection.\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
      printf("Connection successfully closed.\n");
      return 0;
@@ -268,23 +268,23 @@ int create_udp_server(){
 
 
     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
-        perror("UDP Bind");
-        exit(-1);
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
      
      if(pthread_join(read_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      close(socket_fd);
@@ -306,23 +306,23 @@ int create_udp_client(){
 
 
      if(!host){
-        fprintf(stderr, "host is NULL\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_create(&read_t, NULL, read_thread_udp, NULL)){
-        fprintf(stderr, "Error creating thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      if(pthread_join(read_t, NULL)){
-        fprintf(stderr, "Error joing thread\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
 
      close(socket_fd);
@@ -368,8 +368,8 @@ void *write_thread_udp(void *void_ptr){
 
 
         if(sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&addr, addrlen) < 0){
-           perror("sendto");
-           exit(-1);
+           print_internal_error();
+           exit(1);
         }
      }
 }
@@ -378,27 +378,31 @@ void *write_thread_udp(void *void_ptr){
 int create_socket(int uflag){
   if(!uflag){
      if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        fprintf(stderr, "Error. TCP Socket failed to initialize. Quitting...\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
   }
   else{
      if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
-        fprintf(stderr, "Error. UDP Socket failed to initialize. Quitting...\n");
-        return -1;
+        print_internal_error();
+        exit(1);
      }
   }
   
 
   int reuse_port;
   if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_port, sizeof(reuse_port))){
-     perror("setsockopt");
-     return -1;
+     print_internal_error();
+     exit(1);
   }
 }
 
 void print_invalid_params(){
   fprintf(stderr, "invalid or missing options\nusage: snc [-k] [-l] [-u] [-s source_ip_address] [hostname] port\n");
+}
+
+void print_internal_error(){
+  fprintf(stderr, "internal error\n");
 }
 
 /*
