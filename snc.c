@@ -53,24 +53,31 @@ int main(int argc, char *argv[]){
      exit(1);
   }
 
-  if(!lflag){
-     //hostname in this case is required
-     hostname = argv[argc-2];
+  hostname = argv[argc-2];
+  ip = malloc(100);
 
-     /*
+  if(!lflag){
+     //hostname in this case is required     
 
      if(hostname_to_ip(hostname, ip) == -1){
 	fprintf(stderr, "Error. Invalid hostname specified\n");
 	return -1;
      }
-     fprintf(stdout, "%s converted to %s\n",hostname, ip);
+     fprintf(stdout, "%s converted to %s \n",hostname, ip);
      hostname = ip;
      
-     */
+     
   }
   else {
-     // otherwise it is the hostname
-     hostname = argv[argc-2];
+     // hostname is optional
+
+     if(hostname_to_ip(hostname, ip) == -1){
+	hostname = NULL;
+     }
+     else{
+	fprintf(stdout, "%s converted to %s \n",hostname, ip);
+	hostname = ip;
+     }
   }
 
   
@@ -405,24 +412,24 @@ void print_internal_error(){
   fprintf(stderr, "internal error\n");
 }
 
-/*
+
 int hostname_to_ip(char * hostname, char * ip){
     struct hostent *he;
     struct in_addr **addr_list;
 
     if( (he = gethostbyname(hostname)) == NULL ){
-	fprintf(stderr, "Error. hostname is in invalid format.\n");
 	return -1;
     }
 
     addr_list = (struct in_addr **) he->h_addr_list;
-
-    for(int i = 0; addr_list[i] != NULL; i++){
+    
+    int i;
+    for(i = 0; addr_list[i] != NULL; i++){
 	*ip = inet_ntoa(*addr_list[i]); 
 	return 1;
     }
 
     return -1;
 }
-*/
+
 
