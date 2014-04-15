@@ -58,8 +58,8 @@ int main(int argc, char *argv[]){
      //hostname in this case is required     
 
      if(hostname_to_ip(hostname, &ip_address) == -1){
-	fprintf(stderr, "Error. Invalid hostname specified\n");
-	return -1;
+        print_internal_error();
+        exit(1);
      }
      hostname = inet_ntoa(ip_address);
   }
@@ -76,7 +76,6 @@ int main(int argc, char *argv[]){
 
   
 
-  printf("lflag: %d kflag: %d uflag: %d source_ip: %s hostname: %s\n", lflag, kflag, uflag, source_ip, hostname);
 
   create_socket(uflag); 
 
@@ -127,7 +126,6 @@ void *read_thread_tcp(void *void_ptr){
         char buffer[bufsize];
         memset(buffer, 0, bufsize);
         bytes_recv = recv(fdlisten, buffer, bufsize, 0);
-        printf("received: %d bytes\n", bytes_recv);
         if(bytes_recv == 0 || buffer[0] == EOF){
            //EOF was triggered
            pthread_cancel(write_t);
@@ -212,7 +210,6 @@ int listen_and_accept_connection(){
          exit(1);
      }
 
-     printf("New socket is %d\n", connfd);
 
      if(pthread_create(&read_t, NULL, read_thread_tcp, &connfd)){
         print_internal_error();
@@ -233,7 +230,6 @@ int listen_and_accept_connection(){
         print_internal_error();
         exit(1);
      }
-     printf("Connection successfully closed.\n");
      return 0;
 }
 
@@ -271,7 +267,6 @@ int connect_to_server(){
         print_internal_error();
         exit(1);
      }
-     printf("Connection successfully closed.\n");
      return 0;
 }
 
@@ -445,7 +440,6 @@ int hostname_to_ip(char * hostname, struct in_addr *address){
     }
 
     memcpy(address, he->h_addr_list[0], he->h_length);
-    //printf("address: %s\n", inet_ntoa(*address));
     return 0;
 }
 
