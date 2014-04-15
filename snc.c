@@ -127,7 +127,8 @@ void *read_thread_tcp(void *void_ptr){
         char buffer[bufsize];
         memset(buffer, 0, bufsize);
         bytes_recv = recv(fdlisten, buffer, bufsize, 0);
-        if(bytes_recv == 0){
+        printf("received: %d bytes\n", bytes_recv);
+        if(bytes_recv == 0 || buffer[0] == EOF){
            //EOF was triggered
            pthread_cancel(write_t);
            break;
@@ -153,7 +154,7 @@ void *write_thread_tcp(void *void_ptr){
         int cur_index = 0;
         int c = getchar();
         //add possbile length check here too
-        while(c != '\n' && (c != EOF || kflag)){
+        while(c != '\n' && (c != EOF)){
            if(c != EOF){
               message[cur_index] = c;
               cur_index++;
@@ -163,15 +164,23 @@ void *write_thread_tcp(void *void_ptr){
            }
            c = getchar();
         }
-        if(c == EOF){
-           break;
-        }
 
         message[bufsize-1] = 0;
+
+        //send special message that will end the connection
+        if(c == EOF){
+           message[0] = EOF;
+           message[1] = 0;
+           cur_index = 2;
+        }
 
         if(send(fd, message, cur_index, 0) != cur_index){
            print_internal_error();
            exit(1);
+        }
+
+        if(c == EOF){
+           break;
         }
      }
 }
