@@ -426,6 +426,10 @@ int hostname_to_ip(char * hostname, struct in_addr *address){
     struct hostent *he;
     struct in_addr **addr_list;
 
+    if(strlen(hostname) < 3){
+       return -1;
+    }
+
     if( (he = gethostbyname(hostname)) == NULL ){
 	return -1;
     }
