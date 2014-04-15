@@ -32,3 +32,4 @@ struct sockaddr_in addr;
 pthread_t read_t;
 pthread_t write_t;
 int bufsize;
+struct in_addr ip_address;

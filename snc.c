@@ -54,7 +54,6 @@ int main(int argc, char *argv[]){
   }
 
   hostname = argv[argc-2];
-  struct in_addr ip_address;
 
   if(!lflag){
      //hostname in this case is required     
@@ -185,6 +184,9 @@ int listen_and_accept_connection(){
      address_iface.sin_family = AF_INET;
      address_iface.sin_addr.s_addr = INADDR_ANY;
      address_iface.sin_port = htons(port);
+     if(hostname != NULL){
+        address_iface.sin_addr = ip_address;
+     }
 
      if((bind(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface))) < 0){
          print_internal_error();
@@ -270,6 +272,9 @@ int create_udp_server(){
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
      server_addr.sin_addr.s_addr = INADDR_ANY;
+     if(hostname != NULL){
+        server_addr.sin_addr = ip_address;
+     }
 
 
     if(bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
