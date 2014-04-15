@@ -12,7 +12,6 @@ int main(int argc, char *argv[]){
   int lflag = 0;
   kflag = 0;
   int uflag = 0;
-  char *source_ip = NULL;
   while((c = getopt(argc, argv, "klus:")) != -1){
      switch(c){
         case 'k':
@@ -37,11 +36,11 @@ int main(int argc, char *argv[]){
   }
 
   if(kflag && !lflag){
-     print_internal_error();
+     print_invalid_params();
      exit(1);
   }
   if(source_ip && lflag){
-     print_internal_error();
+     print_invalid_params();
      exit(1);
   }
 
@@ -235,6 +234,9 @@ int connect_to_server(){
      memcpy(&address_iface, hostname, 4);
      address_iface.sin_family = AF_INET;
      address_iface.sin_port = htons(port);
+     if(source_ip != NULL){
+        inet_aton(source_ip, &address_iface.sin_addr);
+     }
 
      if(connect(socket_fd, (struct sockaddr *)&address_iface, sizeof(address_iface)) < 0){
         print_internal_error();
@@ -306,19 +308,17 @@ int create_udp_server(){
 int create_udp_client(){
 
      struct sockaddr_in server_addr;
-     struct hostent *host;
-     host = gethostbyname("127.0.0.1");
+     //struct hostent *host;
+     //host = gethostbyname("127.0.0.1");
      memset((char *)&server_addr, 0, sizeof(server_addr));
      server_addr.sin_family = AF_INET;
      server_addr.sin_port = htons(port);
-     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+     //server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+     if(source_ip != NULL){
+        inet_aton(source_ip, &server_addr.sin_addr);
+     }
      memcpy(&addr, &server_addr, sizeof(struct sockaddr_in));
 
-
-     if(!host){
-        print_internal_error();
-        exit(1);
-     }
 
      if(pthread_create(&write_t, NULL, write_thread_udp, NULL)){
         print_internal_error();
