@@ -380,13 +380,17 @@ void *write_thread_udp(void *void_ptr){
         int cur_index = 0;
         int c = getchar();
         //add possbile length check here too
-        while(c != '\n'){
+        while(c != '\n' && c != EOF){
            send_data[cur_index] = c;
            cur_index++;
            if(cur_index >= bufsize-1){
               break;
            }
            c = getchar();
+        }
+
+        if(c == EOF){
+           break;
         }
 
         send_data[bufsize-1] = 0;
