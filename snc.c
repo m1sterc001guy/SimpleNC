@@ -7,7 +7,7 @@ int main(int argc, char *argv[]){
      exit(1);
   }
 
-   
+  bufsize = 1024; 
   int c;
   int lflag = 0;
   kflag = 0;
@@ -65,8 +65,6 @@ int main(int argc, char *argv[]){
      }
      fprintf(stdout, "%s converted to %s \n",hostname, ip);
      hostname = ip;
-     
-     
   }
   else {
      // hostname is optional
@@ -120,6 +118,8 @@ int main(int argc, char *argv[]){
        create_udp_client();
     }
   }
+
+  free(ip);
   
   return 0;
 }
@@ -128,7 +128,6 @@ int main(int argc, char *argv[]){
 void *read_thread_tcp(void *void_ptr){
      //read data from the server
      int fdlisten = *((int *)void_ptr);
-     int bufsize = 1024;
      int bytes_recv;
      while(1){
         char buffer[bufsize];
@@ -144,15 +143,14 @@ void *read_thread_tcp(void *void_ptr){
            exit(1);
         }
         else{
-           printf("%s", buffer);
+           printf("%s\n", buffer);
         }
      }
 }
 
 void *write_thread_tcp(void *void_ptr){
      int fd = *((int *)void_ptr);
-     //what happens when the message you type is longer than 1024 bytes?
-     int message_size = 1023;
+     int message_size = bufsize;
      char message[message_size];
 
      while(1){
@@ -166,14 +164,18 @@ void *write_thread_tcp(void *void_ptr){
               message[cur_index] = c;
               cur_index++;
            }
+           if(cur_index >= bufsize-1){
+              break;
+           }
            c = getchar();
         }
-        message[cur_index] = '\n';
         if(c == EOF){
            break;
         }
 
-        if(send(fd, message, strlen(message), 0) != strlen(message)){
+        message[bufsize-1] = 0;
+
+        if(send(fd, message, cur_index, 0) != cur_index){
            print_internal_error();
            exit(1);
         }
@@ -341,27 +343,29 @@ int create_udp_client(){
 void *read_thread_udp(void *void_ptr){
    
     int recvlen;
-    unsigned char buf[1024];
     socklen_t fromlen = sizeof(addr);
 
 
     while(1){
-        memset(buf, 0, sizeof(buf));
-        recvlen = recvfrom(socket_fd, buf, 1024, 0, (struct sockaddr *)&addr, &fromlen); 
-        buf[recvlen] = 0;
-        printf("%s", buf);
+        char buf[bufsize+1];
+        memset(buf, 0, bufsize);
+        recvlen = recvfrom(socket_fd, buf, bufsize, 0, (struct sockaddr *)&addr, &fromlen); 
+        if(recvlen < 0){
+           print_internal_error();
+           exit(1);
+        }
+        printf("%s\n", buf);
      }
 }
 
 
 void *write_thread_udp(void *void_ptr){
      int bytes_recv;
-     char send_data[1024];
-
      socklen_t addrlen = sizeof(addr);
      
      while(1){
-        memset(send_data, 0, sizeof(send_data));
+        char send_data[bufsize];
+        memset(send_data, 0, bufsize);
 
         int cur_index = 0;
         int c = getchar();
@@ -369,12 +373,16 @@ void *write_thread_udp(void *void_ptr){
         while(c != '\n'){
            send_data[cur_index] = c;
            cur_index++;
+           if(cur_index >= bufsize-1){
+              break;
+           }
            c = getchar();
         }
-        send_data[cur_index] = '\n';
+
+        send_data[bufsize-1] = 0;
 
 
-        if(sendto(socket_fd, send_data, strlen(send_data), 0, (struct sockaddr *)&addr, addrlen) < 0){
+        if(sendto(socket_fd, send_data, bufsize, 0, (struct sockaddr *)&addr, addrlen) < 0){
            print_internal_error();
            exit(1);
         }
