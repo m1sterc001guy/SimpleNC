@@ -396,10 +396,7 @@ void *write_thread_udp(void *void_ptr){
         send_data[bufsize-1] = 0;
 
 
-        if(sendto(socket_fd, send_data, bufsize, 0, (struct sockaddr *)&addr, addrlen) < 0){
-           print_internal_error();
-           exit(1);
-        }
+        sendto(socket_fd, send_data, bufsize, 0, (struct sockaddr *)&addr, addrlen);
      }
 }
 
