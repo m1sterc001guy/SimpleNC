@@ -54,27 +54,25 @@ int main(int argc, char *argv[]){
   }
 
   hostname = argv[argc-2];
-  ip = malloc(100);
+  struct in_addr ip_address;
 
   if(!lflag){
      //hostname in this case is required     
 
-     if(hostname_to_ip(hostname, ip) == -1){
+     if(hostname_to_ip(hostname, &ip_address) == -1){
 	fprintf(stderr, "Error. Invalid hostname specified\n");
 	return -1;
      }
-     fprintf(stdout, "%s converted to %s \n",hostname, ip);
-     hostname = ip;
+     hostname = inet_ntoa(ip_address);
   }
   else {
      // hostname is optional
 
-     if(hostname_to_ip(hostname, ip) == -1){
+     if(hostname_to_ip(hostname, &ip_address) == -1){
 	hostname = NULL;
      }
      else{
-	fprintf(stdout, "%s converted to %s \n",hostname, ip);
-	hostname = ip;
+        hostname = inet_ntoa(ip_address);
      }
   }
 
@@ -119,8 +117,6 @@ int main(int argc, char *argv[]){
     }
   }
 
-  free(ip);
-  
   return 0;
 }
 
@@ -421,7 +417,7 @@ void print_internal_error(){
 }
 
 
-int hostname_to_ip(char * hostname, char * ip){
+int hostname_to_ip(char * hostname, struct in_addr *address){
     struct hostent *he;
     struct in_addr **addr_list;
 
@@ -429,15 +425,9 @@ int hostname_to_ip(char * hostname, char * ip){
 	return -1;
     }
 
-    addr_list = (struct in_addr **) he->h_addr_list;
-    
-    int i;
-    for(i = 0; addr_list[i] != NULL; i++){
-	*ip = inet_ntoa(*addr_list[i]); 
-	return 1;
-    }
-
-    return -1;
+    memcpy(address, he->h_addr_list[0], he->h_length);
+    //printf("address: %s\n", inet_ntoa(*address));
+    return 0;
 }
 
 

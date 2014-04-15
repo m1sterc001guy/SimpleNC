@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 void *read_thread_tcp(void *void_ptr);
 void *write_thread_tcp(void *void_ptr);
@@ -27,7 +28,6 @@ int close_threads;
 int port;
 int kflag;
 char *hostname = NULL;
-char *ip = NULL;
 struct sockaddr_in addr;
 pthread_t read_t;
 pthread_t write_t;
